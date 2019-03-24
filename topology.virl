@@ -2,7 +2,8 @@
     xmlns="http://www.cisco.com/VIRL"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" schemaVersion="0.95" xsi:schemaLocation="http://www.cisco.com/VIRL https://raw.github.com/CiscoVIRL/schema/v0.95/virl.xsd">
     <extensions>
-        <entry key="management_network" type="String">user</entry>
+        <entry key="management_network" type="String">flat</entry>
+        <entry key="management_lxc" type="Boolean">false</entry>
         <entry key="AutoNetkit.enable_cdp" type="Boolean">true</entry>
         <entry key="AutoNetkit.address_family" type="String">v4</entry>
         <entry key="AutoNetkit.ipv4_infra_subnet" type="String">10.0.0.0</entry>
@@ -14,6 +15,7 @@
     </extensions>
     <node location="755,171" type="SIMPLE" subtype="ASAv" name="fw1">
         <extensions>
+            <entry key="ansible_group" type="String">branch-fw</entry>
             <entry key="config" type="string">! ASAv Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
@@ -33,8 +35,8 @@ interface GigabitEthernet0/0
 interface GigabitEthernet0/1
   description to sw5
   duplex full
-  nameif outside-1
-  security-level 0
+  nameif inside
+  security-level 100
   no shutdown
   ip address 10.0.128.1 255.255.255.252
 interface Management0/0
@@ -101,6 +103,16 @@ no call-home reporting anonymous
 call-home
  profile CiscoTAC-1
   no active
+
+access-list global_access line 1 remark Allow Ping
+  access-list global_access line 2 extended permit icmp any any
+
+access-group global_access global
+
+route mgmt 0.0.0.0 0.0.0.0 {{ gateway }}
+route outside 192.168.255.0 255.255.255.0 10.0.128.6
+route outside 10.0.0.0 255.255.0.0 10.0.128.6
+
 end
         </entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
@@ -110,7 +122,8 @@ end
     </node>
     <node location="546,171" type="SIMPLE" subtype="IOSv" name="rtr1" ipv4="192.168.255.1">
         <extensions>
-            <entry key="config" type="string">! IOS Config generated on 2019-02-25 19:56
+          <entry key="ansible_group" type="String">wan</entry>
+          <entry key="config" type="string">! IOS Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
 hostname rtr1
@@ -208,6 +221,7 @@ router ospf 1
   network 10.0.128.8 0.0.0.3 area 0
   network 10.0.128.12 0.0.0.3 area 0
   network 10.0.128.4 0.0.0.3 area 0
+  redistribute static
 !
 !
 router bgp 1
@@ -234,6 +248,8 @@ router bgp 1
 !
 !
 !
+ip route vrf Mgmt-intf 0.0.0.0 0.0.0.0 {{ gateway }}
+ip route 10.0.128.0 255.255.255.248 10.0.128.5
 end</entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
         </extensions>
@@ -243,7 +259,8 @@ end</entry>
     </node>
     <node location="423,289" type="SIMPLE" subtype="IOSv" name="rtr2" ipv4="192.168.255.5">
         <extensions>
-            <entry key="config" type="string">! IOS Config generated on 2019-02-25 19:56
+          <entry key="ansible_group" type="String">core</entry>
+          <entry key="config" type="string">! IOS Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
 hostname rtr2
@@ -367,6 +384,7 @@ router bgp 1
 !
 !
 !
+ip route vrf Mgmt-intf 0.0.0.0 0.0.0.0 {{ gateway }}
 end</entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
         </extensions>
@@ -376,7 +394,8 @@ end</entry>
     </node>
     <node location="671,289" type="SIMPLE" subtype="IOSv" name="rtr3" ipv4="192.168.255.7">
         <extensions>
-            <entry key="config" type="string">! IOS Config generated on 2019-02-25 19:56
+          <entry key="ansible_group" type="String">core</entry>
+          <entry key="config" type="string">! IOS Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
 hostname rtr3
@@ -500,6 +519,7 @@ router bgp 1
 !
 !
 !
+ip route vrf Mgmt-intf 0.0.0.0 0.0.0.0 {{ gateway }}
 end</entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
         </extensions>
@@ -509,7 +529,8 @@ end</entry>
     </node>
     <node location="423,432" type="SIMPLE" subtype="IOSvL2" name="sw1">
         <extensions>
-            <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
+          <entry key="ansible_group" type="String">distribution</entry>
+          <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
 version 15.2
@@ -635,6 +656,7 @@ control-plane
 !
 !
 !
+ip route vrf Mgmt-intf 0.0.0.0 0.0.0.0 {{ gateway }}
 end
         </entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
@@ -647,7 +669,8 @@ end
     </node>
     <node location="671,432" type="SIMPLE" subtype="IOSvL2" name="sw2">
         <extensions>
-            <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
+          <entry key="ansible_group" type="String">distribution</entry>
+          <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
 version 15.2
@@ -773,6 +796,7 @@ control-plane
 !
 !
 !
+ip route vrf Mgmt-intf 0.0.0.0 0.0.0.0 {{ gateway }}
 end
         </entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
@@ -785,7 +809,8 @@ end
     </node>
     <node location="423,568" type="SIMPLE" subtype="IOSvL2" name="sw3">
         <extensions>
-            <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
+          <entry key="ansible_group" type="String">access</entry>
+          <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
 version 15.2
@@ -899,6 +924,7 @@ control-plane
 !
 !
 !
+ip route vrf Mgmt-intf 0.0.0.0 0.0.0.0 {{ gateway }}
 end
         </entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
@@ -909,7 +935,8 @@ end
     </node>
     <node location="671,568" type="SIMPLE" subtype="IOSvL2" name="sw4">
         <extensions>
-            <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
+          <entry key="ansible_group" type="String">access</entry>
+          <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
 version 15.2
@@ -1023,6 +1050,7 @@ control-plane
 !
 !
 !
+ip route vrf Mgmt-intf 0.0.0.0 0.0.0.0 {{ gateway }}
 end
         </entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
@@ -1033,7 +1061,8 @@ end
     </node>
     <node location="893,171" type="SIMPLE" subtype="IOSvL2" name="sw5">
         <extensions>
-            <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
+          <entry key="ansible_group" type="String">branch-switch</entry>
+          <entry key="config" type="string">! IOSvL2 Config generated on 2019-02-25 19:56
 ! by autonetkit_0.24.1
 !
 version 15.2
@@ -1141,6 +1170,7 @@ control-plane
 !
 !
 !
+ip route vrf Mgmt-intf 0.0.0.0 0.0.0.0 {{ gateway }}
 end
         </entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
@@ -1150,7 +1180,8 @@ end
     </node>
     <node location="423,696" type="SIMPLE" subtype="server" name="server-1">
         <extensions>
-            <entry key="config" type="string">#cloud-config
+          <entry key="ansible_group" type="String">dc-server</entry>
+          <entry key="config" type="string">#cloud-config
 bootcmd:
 - ln -s -t /etc/rc.d /etc/rc.local
 hostname: server-1
@@ -1159,6 +1190,12 @@ runcmd:
 - systemctl start rc-local
 - sed -i '/^\s*PasswordAuthentication\s\+no/d' /etc/ssh/sshd_config
 - echo "UseDNS no" &gt;&gt; /etc/ssh/sshd_config
+- echo "10.0.0.1 server-1" &gt;&gt; /etc/hosts
+- echo "10.0.0.3 server-2" &gt;&gt; /etc/hosts
+- echo "10.0.128.2 server-3" &gt;&gt; /etc/hosts
+- echo "192.168.255.1 rtr1" &gt;&gt; /etc/hosts
+- echo "192.168.255.5 rtr2" &gt;&gt; /etc/hosts
+- echo "192.168.255.7 rtr3" &gt;&gt; /etc/hosts
 - service ssh restart
 - service sshd restart
 users:
@@ -1202,7 +1239,8 @@ write_files:
     </node>
     <node location="671,696" type="SIMPLE" subtype="server" name="server-2">
         <extensions>
-            <entry key="config" type="string">#cloud-config
+          <entry key="ansible_group" type="String">dc-server</entry>
+          <entry key="config" type="string">#cloud-config
 bootcmd:
 - ln -s -t /etc/rc.d /etc/rc.local
 hostname: server-2
@@ -1211,6 +1249,12 @@ runcmd:
 - systemctl start rc-local
 - sed -i '/^\s*PasswordAuthentication\s\+no/d' /etc/ssh/sshd_config
 - echo "UseDNS no" &gt;&gt; /etc/ssh/sshd_config
+- echo "10.0.0.1 server-1" &gt;&gt; /etc/hosts
+- echo "10.0.0.3 server-2" &gt;&gt; /etc/hosts
+- echo "10.0.128.2 server-3" &gt;&gt; /etc/hosts
+- echo "192.168.255.1 rtr1" &gt;&gt; /etc/hosts
+- echo "192.168.255.5 rtr2" &gt;&gt; /etc/hosts
+- echo "192.168.255.7 rtr3" &gt;&gt; /etc/hosts
 - service ssh restart
 - service sshd restart
 users:
@@ -1254,7 +1298,8 @@ write_files:
     </node>
     <node location="1025,171" type="SIMPLE" subtype="server" name="server-3">
         <extensions>
-            <entry key="config" type="string">#cloud-config
+          <entry key="ansible_group" type="String">branch-server</entry>
+          <entry key="config" type="string">#cloud-config
 bootcmd:
 - ln -s -t /etc/rc.d /etc/rc.local
 hostname: server-3
@@ -1263,6 +1308,12 @@ runcmd:
 - systemctl start rc-local
 - sed -i '/^\s*PasswordAuthentication\s\+no/d' /etc/ssh/sshd_config
 - echo "UseDNS no" &gt;&gt; /etc/ssh/sshd_config
+- echo "10.0.0.1 server-1" &gt;&gt; /etc/hosts
+- echo "10.0.0.3 server-2" &gt;&gt; /etc/hosts
+- echo "10.0.128.2 server-3" &gt;&gt; /etc/hosts
+- echo "192.168.255.1 rtr1" &gt;&gt; /etc/hosts
+- echo "192.168.255.5 rtr2" &gt;&gt; /etc/hosts
+- echo "192.168.255.7 rtr3" &gt;&gt; /etc/hosts
 - service ssh restart
 - service sshd restart
 users:
@@ -1294,6 +1345,8 @@ write_files:
   content: |-
     #!/bin/sh
     ifconfig eth1 up 10.0.128.2 netmask 255.255.255.252
+    route add -net 10.0.0.0/16 gw 10.0.128.1 dev eth1
+    route add -net 192.168.255.0/24 gw 10.0.128.1 dev eth1
     exit 0
 </entry>
             <entry key="AutoNetkit.ASN" type="Integer">1</entry>
